@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { Header } from "@/components/Header";
 import { Toaster } from "@/components/ui/sonner";
+import { AppShell } from "@/components/layout/app-shell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,13 +32,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <Providers>
-          <Header />
-          <main className="flex-1">{children}</main>
+          <AppShell>
+            <main className="flex-1">{children}</main>
+          </AppShell>
         </Providers>
         <Toaster position="top-right" richColors />
       </body>
     </html>
   );
 }
-
-
