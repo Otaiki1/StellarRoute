@@ -13,8 +13,6 @@ use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, vec, Address, Bytes, BytesN, Env, IntoVal,
     Symbol, Vec,
 };
-use crate::types::{QuoteResult, Route, SwapParams, SwapResult, TTLStatus};
-use soroban_sdk::{contract, contractimpl, symbol_short, vec, Address, Env, IntoVal, Symbol};
 
 const MAX_HOPS: u32 = 4;
 const BASE_CPU_PER_HOP: u64 = 5_000_000;
