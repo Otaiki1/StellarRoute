@@ -75,14 +75,22 @@ pub fn quote_generated(
     );
 }
 
-pub fn execution_requested(e: &Env, sender: Address, amount_in: i128, hop_count: u32, deadline: u64) {
+pub fn execution_requested(
+    e: &Env,
+    sender: Address,
+    amount_in: i128,
+    hop_count: u32,
+    deadline: u64,
+) {
     let topics = (
         Symbol::new(e, "StellarRoute"),
         symbol_short!("exe_req"),
         sender,
     );
-    e.events()
-        .publish(topics, (amount_in, hop_count, deadline, e.ledger().sequence()));
+    e.events().publish(
+        topics,
+        (amount_in, hop_count, deadline, e.ledger().sequence()),
+    );
 }
 
 pub fn execution_failed(e: &Env, sender: Address, error_code: u32) {
@@ -91,7 +99,8 @@ pub fn execution_failed(e: &Env, sender: Address, error_code: u32) {
         symbol_short!("exe_fail"),
         sender,
     );
-    e.events().publish(topics, (error_code, e.ledger().sequence()));
+    e.events()
+        .publish(topics, (error_code, e.ledger().sequence()));
 }
 
 // ─── Multi-sig governance events ─────────────────────────────────────────────

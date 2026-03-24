@@ -695,7 +695,11 @@ impl StellarRoute {
     }
 
     /// Interface alias for external integrators: execute a validated route.
-    pub fn execute(e: Env, sender: Address, params: SwapParams) -> Result<SwapResult, ContractError> {
+    pub fn execute(
+        e: Env,
+        sender: Address,
+        params: SwapParams,
+    ) -> Result<SwapResult, ContractError> {
         events::execution_requested(
             &e,
             sender.clone(),

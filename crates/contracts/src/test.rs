@@ -445,7 +445,10 @@ fn test_quote_alias_matches_get_quote() {
     let route = make_route(&env, &pool, 1);
     let quote_via_get = client.get_quote(&1000, &route);
     let quote_via_alias = client.quote(&1000, &route);
-    assert_eq!(quote_via_get.expected_output, quote_via_alias.expected_output);
+    assert_eq!(
+        quote_via_get.expected_output,
+        quote_via_alias.expected_output
+    );
     assert_eq!(quote_via_get.fee_amount, quote_via_alias.fee_amount);
 }
 
@@ -565,7 +568,13 @@ fn test_execute_alias_matches_execute_swap() {
     let pool = deploy_mock_pool(&env);
     client.register_pool(&pool);
     let sender = Address::generate(&env);
-    let params = swap_params_for(&env, make_route(&env, &pool, 1), 1000, 0, current_seq(&env) + 100);
+    let params = swap_params_for(
+        &env,
+        make_route(&env, &pool, 1),
+        1000,
+        0,
+        current_seq(&env) + 100,
+    );
     let via_alias = client.execute(&sender, &params);
     assert!(via_alias.amount_out > 0);
 }
