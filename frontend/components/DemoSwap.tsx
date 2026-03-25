@@ -12,6 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TransactionConfirmationModal } from "@/components/shared/TransactionConfirmationModal";
+import { TradeRouteDisplay } from "@/components/shared/TradeRouteDisplay";
+import { usePairs } from "@/hooks/useApi";
+import { useQuoteRefresh } from "@/hooks/useQuoteRefresh";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import { usePairs, useQuote } from "@/hooks/useApi";
 import { useWallet } from "@/components/providers/wallet-provider";
@@ -30,6 +33,44 @@ function pairKey(p: TradingPair): string {
   return `${p.base_asset}__${p.counter_asset}`;
 }
 
+import { QUOTE_AUTO_REFRESH_INTERVAL_MS } from "@/lib/quote-stale";
+import { PathStep } from "@/types";
+import { TransactionStatus } from "@/types/transaction";
+
+const MOCK_WALLET = "GBSU...XYZ9";
+
+/** Basic sell-side amount check for demo (7 dp max, typical for XLM). */
+function parseDemoSellAmount(raw: string): { ok: true; n: number } | { ok: false; message: string } {
+  const t = raw.trim().replace(/\s+/g, "");
+  if (!t) return { ok: false, message: "Enter an amount" };
+  if (/[eE][+-]?\d/.test(t)) {
+    return { ok: false, message: "Scientific notation is not supported" };
+  }
+  if (!/^\d*\.?\d+$/.test(t)) return { ok: false, message: "Invalid number" };
+  const parts = t.split(".");
+  if (parts.length === 2 && parts[1].length > 7) {
+    return { ok: false, message: "Too many decimal places (max 7)" };
+  }
+  const n = Number(t);
+  if (!Number.isFinite(n) || n <= 0) {
+    return { ok: false, message: "Enter a positive amount" };
+  }
+  return { ok: true, n };
+}
+
+const mockRoute: PathStep[] = [
+  {
+    from_asset: { asset_type: "native" },
+    to_asset: {
+      asset_type: "credit_alphanum4",
+      asset_code: "USDC",
+      asset_issuer: "GA5Z...",
+    },
+    price: "0.105",
+    source: "sdex",
+  },
+];
+
 export function DemoSwap() {
   const { data: pairs, loading: pairsLoading, error: pairsError } = usePairs();
   const { isConnected, stubSpendableBalance } = useWallet();
@@ -43,8 +84,10 @@ export function DemoSwap() {
   );
   const [errorMessage, setErrorMessage] = useState<string>();
   const [txHash, setTxHash] = useState<string>();
+  const [sellAmount, setSellAmount] = useState("100");
 
   const { addTransaction } = useTransactionHistory(MOCK_WALLET);
+  const { data: pairs, loading: pairsLoading, error: pairsError } = usePairs();
 
   useEffect(() => {
     if (!pairs?.length) return;
@@ -198,7 +241,7 @@ export function DemoSwap() {
     quote && parseResult.status === "ok" ? quote.total : "—";
 
   return (
-    <Card className="p-6 max-w-sm mx-auto shadow-lg mt-8 border-primary/20 bg-background/50 backdrop-blur-sm">
+    <Card className="p-6 max-w-lg mx-auto shadow-lg mt-8 border-primary/20 bg-background/50 backdrop-blur-sm">
       <div className="space-y-4">
         <div>
           <h2 className="text-xl font-bold mb-1">Swap Tokens</h2>
@@ -310,6 +353,34 @@ export function DemoSwap() {
             </span>
             <div className="text-sm mt-1">{quote?.price ?? "—"}</div>
           </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={refreshDisabled}
+            onClick={() => refresh()}
+            className="gap-2"
+          >
+            {quoteLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="h-4 w-4" aria-hidden />
+            )}
+            Refresh quote
+          </Button>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-input"
+              checked={autoRefreshEnabled}
+              onChange={(e) => setAutoRefreshEnabled(e.target.checked)}
+            />
+            Auto-refresh (~{Math.round(QUOTE_AUTO_REFRESH_INTERVAL_MS / 1000)}s,
+            pauses when tab hidden)
+          </label>
         </div>
 
         <Button

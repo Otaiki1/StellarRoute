@@ -15,6 +15,7 @@ import {
   StellarRouteApiError,
   stellarRouteClient,
 } from '@/lib/api/client';
+import { QUOTE_AMOUNT_DEBOUNCE_MS } from '@/lib/quote-stale';
 import type {
   HealthStatus,
   Orderbook,
@@ -155,7 +156,8 @@ export function useQuote(
   quote: string,
   amount: number | undefined,
   type: QuoteType = 'sell',
-  refreshIntervalMs = 30_000,
+  /** Optional polling interval. Prefer `useQuoteRefresh` for manual/auto refresh UX. */
+  refreshIntervalMs?: number,
 ): UseApiState<PriceQuote> & { refresh: () => void } {
   const debouncedAmount = useDebounced(amount, QUOTE_AMOUNT_DEBOUNCE_MS);
 
