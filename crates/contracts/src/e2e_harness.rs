@@ -198,7 +198,7 @@ fn e2e_direct_swap_output_less_than_input() {
     for amount in [100_i128, 1_000, 50_000, 1_000_000] {
         let result = client.execute_swap(
             &Address::generate(&env),
-            &swap_params(&env, multi_pool_route(&env, &[pool.clone()]), amount, 0),
+            &swap_params(&env, multi_pool_route(&env, core::slice::from_ref(&pool)), amount, 0),
         );
         assert!(
             result.amount_out < amount,
@@ -396,7 +396,7 @@ fn e2e_multi_hop_more_hops_less_output() {
 
     let r1 = client.execute_swap(
         &Address::generate(&env),
-        &swap_params(&env, multi_pool_route(&env, &[p1.clone()]), amount, 0),
+        &swap_params(&env, multi_pool_route(&env, core::slice::from_ref(&p1)), amount, 0),
     );
     let r4 = client.execute_swap(
         &Address::generate(&env),
@@ -839,7 +839,7 @@ fn e2e_mev_rate_limit_blocks_excessive_swaps() {
     for _ in 0..3 {
         let result = client.try_execute_swap(
             &sender,
-            &swap_params(&env, multi_pool_route(&env, &[pool.clone()]), 1_000, 0),
+            &swap_params(&env, multi_pool_route(&env, core::slice::from_ref(&pool)), 1_000, 0),
         );
         assert!(result.is_ok(), "swap within limit should succeed");
     }
@@ -868,7 +868,7 @@ fn e2e_mev_whitelisted_exempt_from_rate_limit() {
     for _ in 0..5 {
         let result = client.try_execute_swap(
             &sender,
-            &swap_params(&env, multi_pool_route(&env, &[pool.clone()]), 1_000, 0),
+            &swap_params(&env, multi_pool_route(&env, core::slice::from_ref(&pool)), 1_000, 0),
         );
         assert!(
             result.is_ok(),
@@ -1008,7 +1008,7 @@ fn e2e_lifecycle_multi_user_volume_accumulation() {
     for i in 0..4u32 {
         let result = client.execute_swap(
             &Address::generate(&env),
-            &swap_params(&env, multi_pool_route(&env, &[pool.clone()]), amount, 0),
+            &swap_params(&env, multi_pool_route(&env, core::slice::from_ref(&pool)), amount, 0),
         );
         assert!(result.amount_out > 0);
         assert_eq!(client.get_total_swap_volume(), amount * (i as i128 + 1));
@@ -1026,7 +1026,7 @@ fn e2e_lifecycle_pause_mid_operation_then_resume() {
     // Swap 1: succeeds
     let r1 = client.execute_swap(
         &Address::generate(&env),
-        &swap_params(&env, multi_pool_route(&env, &[pool.clone()]), 1_000, 0),
+        &swap_params(&env, multi_pool_route(&env, core::slice::from_ref(&pool)), 1_000, 0),
     );
     assert!(r1.amount_out > 0);
 
@@ -1036,7 +1036,7 @@ fn e2e_lifecycle_pause_mid_operation_then_resume() {
     // Swap 2: fails
     let r2 = client.try_execute_swap(
         &Address::generate(&env),
-        &swap_params(&env, multi_pool_route(&env, &[pool.clone()]), 1_000, 0),
+        &swap_params(&env, multi_pool_route(&env, core::slice::from_ref(&pool)), 1_000, 0),
     );
     assert_eq!(r2, Err(Ok(ContractError::Paused)));
 
@@ -1065,7 +1065,7 @@ fn e2e_lifecycle_admin_change_does_not_affect_swaps() {
 
     let r1 = client.execute_swap(
         &Address::generate(&env),
-        &swap_params(&env, multi_pool_route(&env, &[pool.clone()]), 1_000, 0),
+        &swap_params(&env, multi_pool_route(&env, core::slice::from_ref(&pool)), 1_000, 0),
     );
 
     // Change admin
