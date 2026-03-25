@@ -132,7 +132,25 @@ pub struct QuoteResponse {
     pub total: String,
     pub quote_type: String,
     pub path: Vec<PathStep>,
+    pub rationale: QuoteRationaleMetadata,
     pub timestamp: i64,
+}
+
+/// Rationale metadata for quote venue selection
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct QuoteRationaleMetadata {
+    pub strategy: String,
+    pub selected_source: String,
+    pub compared_venues: Vec<VenueEvaluation>,
+}
+
+/// Per-venue comparison details for direct route evaluation
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VenueEvaluation {
+    pub source: String,
+    pub price: String,
+    pub available_amount: String,
+    pub executable: bool,
 }
 
 /// Step in a trading path
