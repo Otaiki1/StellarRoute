@@ -5,7 +5,7 @@ pub mod metrics;
 pub mod orderbook;
 pub mod pairs;
 pub mod quote;
-pub mod routes_endpoint; // ADDED THIS
+pub mod ws;
 
 use axum::{routing::get, Router};
 use std::sync::Arc;
