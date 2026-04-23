@@ -297,15 +297,9 @@ async fn check_amm_coverage() -> CheckResult {
 }
 
 fn print_text_report(report: &ReadinessReport) {
-    println!(
-        "\n===================================================="
-    );
-    println!(
-        "🚀 STELLARROUTE M2 READINESS REPORT {}", report.timestamp
-    );
-    println!(
-        "====================================================\n"
-    );
+    println!("\n====================================================");
+    println!("🚀 STELLARROUTE M2 READINESS REPORT {}", report.timestamp);
+    println!("====================================================\n");
 
     println!("OVERALL STATUS: {}\n", report.overall_status);
 
@@ -325,8 +319,6 @@ fn print_text_report(report: &ReadinessReport) {
         );
         println!("Refer to docs/readiness/M2_GUIDE.md for troubleshooting steps.\n");
     } else {
-        println!(
-            "🎉 M2 RELEASE GATE PASSED: System is ready for milestone completion."
-        );
+        println!("🎉 M2 RELEASE GATE PASSED: System is ready for milestone completion.");
     }
 }

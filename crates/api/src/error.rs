@@ -103,9 +103,11 @@ impl IntoResponse for ApiError {
             ApiError::InvalidSlippage(msg) => {
                 (StatusCode::BAD_REQUEST, ApiErrorCode::InvalidSlippage, msg)
             }
-            ApiError::InvalidAssetFormat(msg) => {
-                (StatusCode::BAD_REQUEST, ApiErrorCode::InvalidAssetFormat, msg)
-            }
+            ApiError::InvalidAssetFormat(msg) => (
+                StatusCode::BAD_REQUEST,
+                ApiErrorCode::InvalidAssetFormat,
+                msg,
+            ),
             ApiError::NoRouteFound => (
                 StatusCode::NOT_FOUND,
                 ApiErrorCode::NoRoute,
