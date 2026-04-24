@@ -12,12 +12,14 @@ import type { AlternativeRoute } from './RouteDisplay';
 import { SwapButton, SwapButtonState } from './SwapButton';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { HighImpactConfirmModal } from './HighImpactConfirmModal';
+import { TransactionConfirmationModal } from './TransactionConfirmationModal';
 import { QuoteStreamStatusIndicator } from './QuoteStreamStatusIndicator';
 import { useSwapState } from '@/hooks/useSwapState';
+import { useOptimisticSwap } from '@/hooks/useOptimisticSwap';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useQuoteStreamStatus } from '@/hooks/useQuoteStreamStatus';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import type { PreSubmitSnapshot } from '@/types/transaction';
 
 export function SwapCard() {
   const {
@@ -29,14 +31,15 @@ export function SwapCard() {
     setFromAmount,
     toAmount,
     slippage,
+    setSlippage,
     quote,
     switchTokens,
     formattedRate,
   } = useSwapState();
 
   const [isConnected, setIsConnected] = useState(false);
-  const [isSwapping, setIsSwapping] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<AlternativeRoute | null>(null);
 
   // Connection status indicator
@@ -46,14 +49,25 @@ export function SwapCard() {
     error: quote.error,
     isOnline,
   });
-  
+
+  const optimistic = useOptimisticSwap({
+    rollbackTarget: {
+      setFromToken,
+      setToToken,
+      setFromAmount,
+      setSlippage,
+      setSelectedRoute: (id) => setSelectedRoute(id ? { id, venue: '', expectedAmount: '' } : null),
+      refreshQuote: quote.refresh,
+    },
+  });
+
   // Mock balance
-  const fromBalance = "100.00"; 
+  const fromBalance = "100.00";
   const fromSymbol = fromToken === 'native' ? 'XLM' : fromToken.split(':')[0];
   const toSymbol = toToken === 'native' ? 'XLM' : toToken.split(':')[0];
 
   const buttonState = useMemo<SwapButtonState>(() => {
-    if (isSwapping) return "executing";
+    if (optimistic.submitLock) return "executing";
     if (!isConnected) return "no_wallet";
     if (!fromAmount || parseFloat(fromAmount) === 0) return "no_amount";
     if (parseFloat(fromAmount) > parseFloat(fromBalance)) return "insufficient_balance";
@@ -61,23 +75,39 @@ export function SwapCard() {
     if (quote.isStale) return "error";
     if (quote.error) return "error";
     return "ready";
-  }, [isConnected, fromAmount, fromBalance, quote.priceImpact, quote.isStale, quote.error, isSwapping]);
+  }, [isConnected, fromAmount, fromBalance, quote.priceImpact, quote.isStale, quote.error, optimistic.submitLock]);
 
-  const executeSwap = useCallback(async () => {
-    setIsSwapping(true);
-    // Simulate transaction delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsSwapping(false);
-    toast.success(`Successfully swapped ${fromAmount} ${fromSymbol} for ${parseFloat(toAmount).toFixed(4)} ${toSymbol}`);
-  }, [fromAmount, fromSymbol, toAmount, toSymbol]);
+  const handleConfirm = useCallback(() => {
+    const snap: PreSubmitSnapshot = {
+      fromToken,
+      toToken,
+      fromAmount,
+      slippage,
+      selectedRouteId: selectedRoute?.id ?? null,
+    };
+    setIsModalOpen(true);
+    optimistic.initiateSwap({
+      fromAsset: fromToken,
+      fromAmount,
+      toAsset: toToken,
+      toAmount: selectedRoute?.expectedAmount ?? toAmount,
+      exchangeRate: formattedRate,
+      priceImpact: quote.priceImpact.toString(),
+      minReceived: `${(parseFloat(toAmount || '0') * (1 - slippage / 100)).toFixed(4)} ${toSymbol}`,
+      networkFee: quote.fee ? `${quote.fee.toFixed(5)} XLM` : '0.00001 XLM',
+      routePath: [],
+      walletAddress: 'mock_wallet_address',
+      snapshot: snap,
+    });
+  }, [fromToken, toToken, fromAmount, slippage, selectedRoute, toAmount, formattedRate, quote, toSymbol, optimistic]);
 
-  const handleSwap = useCallback(async () => {
+  const handleSwap = useCallback(() => {
     if (quote.priceImpact > 5) {
       setIsConfirmModalOpen(true);
       return;
     }
-    await executeSwap();
-  }, [quote.priceImpact, executeSwap]);
+    handleConfirm();
+  }, [quote.priceImpact, handleConfirm]);
 
   const handleMax = useCallback(() => {
     setFromAmount(fromBalance);
@@ -94,7 +124,7 @@ export function SwapCard() {
         {/* Animated Background Gradients */}
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-700" />
-        
+
         <CardContent className="p-6 space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between mb-2">
@@ -104,10 +134,10 @@ export function SwapCard() {
             <div className="flex items-center gap-1">
               <QuoteStreamStatusIndicator status={streamStatus} mode={streamMode} />
               <SettingsPanel />
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => quote.refresh()} 
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => quote.refresh()}
                 disabled={quote.loading}
                 aria-label="Refresh quote"
                 className="h-9 w-9 rounded-xl hover:bg-muted/80"
@@ -208,7 +238,7 @@ export function SwapCard() {
               isLoading={quote.loading}
             />
           </div>
-          
+
           {/* Status/Error Messages */}
           {quote.error && (
             <p className="text-center text-xs font-medium text-destructive animate-pulse">
@@ -217,17 +247,47 @@ export function SwapCard() {
           )}
         </CardContent>
       </Card>
-      
-      {/* High Impact Confirmation Modal */}
+
+      {/* High Impact Confirmation Modal — separate purpose: warns before the review step */}
       <HighImpactConfirmModal
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
-        onConfirm={executeSwap}
+        onConfirm={() => {
+          setIsConfirmModalOpen(false);
+          handleConfirm();
+        }}
         priceImpact={quote.priceImpact}
         fromAmount={fromAmount}
         fromSymbol={fromSymbol}
         toAmount={toAmount}
         toSymbol={toSymbol}
+      />
+
+      {/* Transaction Confirmation Modal */}
+      <TransactionConfirmationModal
+        isOpen={isModalOpen}
+        status={optimistic.status}
+        txHash={optimistic.txHash}
+        errorMessage={optimistic.errorMessage}
+        tradeParams={optimistic.tradeParams}
+        onConfirm={handleConfirm}
+        onCancel={() => {
+          optimistic.cancel();
+          setIsModalOpen(false);
+        }}
+        onTryAgain={() => {
+          optimistic.tryAgain();
+          setIsModalOpen(false);
+        }}
+        onResubmit={() => optimistic.resubmit()}
+        onDismiss={() => {
+          optimistic.dismiss();
+          setIsModalOpen(false);
+        }}
+        onDone={() => {
+          optimistic.dismiss();
+          setIsModalOpen(false);
+        }}
       />
 
       {/* Footer Info */}
@@ -237,4 +297,3 @@ export function SwapCard() {
     </div>
   );
 }
-

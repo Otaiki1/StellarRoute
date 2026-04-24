@@ -74,7 +74,7 @@ export function SwapButton({
         };
       case "executing":
         return {
-          label: "Swapping...",
+          label: "Swap in progress\u2026",
           disabled: true,
           variant: "default" as const,
           icon: <Loader2 className="mr-2 h-5 w-5 animate-spin" />,
