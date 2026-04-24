@@ -48,7 +48,7 @@ impl CompactedGraph {
         for edge in edges {
             let from_idx = *asset_map.get(&edge.from).unwrap();
             let to_idx = *asset_map.get(&edge.to).unwrap();
-            
+
             let c_edge = CompactedEdge {
                 to_idx,
                 venue_type_idx: if edge.venue_type == "amm" { 1 } else { 0 },
@@ -90,7 +90,13 @@ impl CompactedGraph {
         self.assets.len()
     }
 
-    pub fn update_edge(&mut self, from: &str, venue_ref: &str, liquidity: i128, price: f64) -> bool {
+    pub fn update_edge(
+        &mut self,
+        from: &str,
+        venue_ref: &str,
+        liquidity: i128,
+        price: f64,
+    ) -> bool {
         if let Some(&from_idx) = self.asset_map.get(from) {
             let start = self.offsets[from_idx as usize];
             let end = self.offsets[from_idx as usize + 1];

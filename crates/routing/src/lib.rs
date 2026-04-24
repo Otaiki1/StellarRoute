@@ -6,6 +6,7 @@
 pub mod adaptive_routing;
 pub mod adaptive_timeout;
 pub mod canary;
+pub mod compaction;
 pub mod consensus;
 pub mod error;
 pub mod fixtures;
@@ -17,11 +18,11 @@ pub mod pathfinder;
 pub mod policy;
 pub mod risk;
 pub mod simulator;
-pub mod compaction;
 
 pub use adaptive_routing::{AdaptiveError, AdaptivePolicy, AdaptiveRouter, QualityMetrics};
 pub use adaptive_timeout::{TimeoutConfig, TimeoutController};
 pub use canary::{CanaryConfig, CanaryEvaluation, CanaryEvaluator};
+pub use compaction::{CompactedEdge, CompactedGraph};
 pub use consensus::{
     ConsensusDiagnostics, ConsensusEngine, ConsensusError, ConsensusPolicy, RouteCandidate,
 };
@@ -32,7 +33,6 @@ pub use optimizer::{
 pub use pathfinder::{LiquidityEdge, Pathfinder, PathfinderConfig, SwapPath};
 pub use policy::RoutingPolicy;
 pub use risk::{AssetRiskLimit, ExclusionReason, RiskLimitConfig, RiskValidator, RouteExclusion};
-pub use compaction::{CompactedEdge, CompactedGraph};
 
 /// Routing engine with integrated pathfinding and impact calculations
 pub struct RoutingEngine {

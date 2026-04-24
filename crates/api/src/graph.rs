@@ -2,11 +2,11 @@
 use arc_swap::ArcSwap;
 use sqlx::{postgres::PgListener, PgPool, Row};
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
 use stellarroute_routing::health::anomaly::LiquidityAnomalyDetector;
+use tracing::{debug, error, info, warn};
 
-use stellarroute_routing::pathfinder::LiquidityEdge;
 use stellarroute_routing::compaction::CompactedGraph;
+use stellarroute_routing::pathfinder::LiquidityEdge;
 
 /// Daemon that maintains an active in-memory cache of the routing graph
 pub struct GraphManager {
@@ -175,7 +175,7 @@ impl GraphManager {
                         let (reserves, depth) = if is_amm {
                             // For AMM, we assume reserves are related to the available amount
                             // This is a simplification; in a real app we'd fetch reserves directly
-                            (Some(( (a * 1e7) as i128, ( (a * p * 1e7) as i128))), None)
+                            (Some(((a * 1e7) as i128, ((a * p * 1e7) as i128))), None)
                         } else {
                             (None, Some((a * 1e7) as i128))
                         };
@@ -202,7 +202,8 @@ impl GraphManager {
             "Graph sync complete: swapped {} edges atomically into compacted graph",
             next_edges.len()
         );
-        self.edges.store(Arc::new(CompactedGraph::from_edges(next_edges)));
+        self.edges
+            .store(Arc::new(CompactedGraph::from_edges(next_edges)));
         Ok(())
     }
 }
@@ -232,7 +233,9 @@ mod tests {
         }];
 
         // Set initial state
-        manager.edges.store(Arc::new(CompactedGraph::from_edges(initial_edges.clone())));
+        manager
+            .edges
+            .store(Arc::new(CompactedGraph::from_edges(initial_edges.clone())));
 
         // Obtain a snapshot
         let snapshot1 = manager.get_edges();
@@ -251,7 +254,9 @@ mod tests {
             anomaly_score: 0.0,
             anomaly_reasons: vec![],
         }];
-        manager.edges.store(Arc::new(CompactedGraph::from_edges(new_edges)));
+        manager
+            .edges
+            .store(Arc::new(CompactedGraph::from_edges(new_edges)));
 
         // Obtain a second snapshot
         let snapshot2 = manager.get_edges();
@@ -279,7 +284,9 @@ mod tests {
             anomaly_score: 0.0,
             anomaly_reasons: vec![],
         }];
-        manager.edges.store(Arc::new(CompactedGraph::from_edges(initial_edges)));
+        manager
+            .edges
+            .store(Arc::new(CompactedGraph::from_edges(initial_edges)));
 
         let mut handles = vec![];
         for _ in 0..10 {
@@ -304,8 +311,8 @@ mod tests {
                     liquidity: 100,
                     price: 1.0,
                     fee_bps: 30,
-            anomaly_score: 0.0,
-            anomaly_reasons: vec![],
+                    anomaly_score: 0.0,
+                    anomaly_reasons: vec![],
                 }];
                 m2.edges.store(Arc::new(CompactedGraph::from_edges(edges)));
                 tokio::time::sleep(std::time::Duration::from_millis(1)).await;

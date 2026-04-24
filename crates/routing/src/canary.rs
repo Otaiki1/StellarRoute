@@ -82,7 +82,7 @@ impl CanaryEvaluator {
         // If candidate outputs less than baseline, that's negative drift
         let baseline_output = baseline.metrics.output_amount as f64;
         let candidate_output = candidate.metrics.output_amount as f64;
-        
+
         let output_drift_bps = if baseline_output > 0.0 {
             // How much *less* is the candidate? (positive BPS means candidate is worse)
             ((baseline_output - candidate_output) / baseline_output * 10000.0).round() as i64

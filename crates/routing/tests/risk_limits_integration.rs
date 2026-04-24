@@ -76,8 +76,8 @@ fn test_strict_policy_excludes_low_liquidity() {
         liquidity: 10_000,
         price: 0.10,
         fee_bps: 30,
-            anomaly_score: 0.0,
-            anomaly_reasons: vec![],
+        anomaly_score: 0.0,
+        anomaly_reasons: vec![],
     }];
     let routing_policy = RoutingPolicy::default();
 

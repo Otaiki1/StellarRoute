@@ -1,14 +1,8 @@
-use axum::{
-    extract::State,
-    Json,
-};
+use axum::{extract::State, Json};
 use serde_json::Value;
 use std::sync::Arc;
 
-use crate::{
-    error::Result,
-    state::AppState,
-};
+use crate::{error::Result, state::AppState};
 use stellarroute_routing::canary::CanaryConfig;
 
 /// GET /api/v1/system/canary/report

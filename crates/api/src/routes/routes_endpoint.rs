@@ -7,16 +7,16 @@ use axum::{
 use std::sync::Arc;
 use tracing::debug;
 
+use stellarroute_routing::health::policy::ExclusionPolicy;
 use stellarroute_routing::optimizer::HybridOptimizer;
 use stellarroute_routing::policy::RoutingPolicy;
-use stellarroute_routing::health::policy::ExclusionPolicy;
-use stellarroute_routing::health::scorer::VenueType;
 
 use crate::{
     error::{ApiError, Result},
+    middleware::RequestId,
     models::{
         request::{AssetPath, RoutesParams},
-        AssetInfo, RouteCandidate, RouteHop, RoutesResponse,
+        ApiResponse, AssetInfo, RouteCandidate, RouteHop, RoutesResponse,
     },
     state::AppState,
 };
@@ -74,9 +74,10 @@ fn asset_path_to_info(asset: &AssetPath) -> AssetInfo {
 )]
 pub async fn get_routes(
     State(state): State<Arc<AppState>>,
+    request_id: RequestId,
     Path((base, quote)): Path<(String, String)>,
     Query(params): Query<RoutesParams>,
-) -> Result<Json<RoutesResponse>> {
+) -> Result<Json<ApiResponse<RoutesResponse>>> {
     debug!("get_routes: {}/{} params={:?}", base, quote, params);
 
     // ── Input validation ────────────────────────────────────────────────────
@@ -132,7 +133,7 @@ pub async fn get_routes(
             // For now, we perform filtering during BFS in the pathfinder which is safer.
             // However, we need to pass the exclusion policy down.
             let overrides = state_c.kill_switch.get_override_registry().await;
-            let exclusion_policy = ExclusionPolicy {
+            let _exclusion_policy = ExclusionPolicy {
                 thresholds: Default::default(),
                 overrides,
                 circuit_breaker: Some(state_c.circuit_breaker.clone()),
@@ -187,13 +188,13 @@ pub async fn get_routes(
             let state_canary = state_c.clone();
             let diag_baseline = diag.clone();
             let amount_e7_canary = amount_e7;
-            
+
             tokio::spawn(async move {
                 let config = state_canary.canary_config.read().await.clone();
                 if !config.enabled {
                     return;
                 }
-                
+
                 // Pseudo-random sampling
                 let rate = (chrono::Utc::now().timestamp_micros() % 1000) as f64 / 1000.0;
                 if rate > config.evaluation_rate {
@@ -216,8 +217,17 @@ pub async fn get_routes(
                     if optimizer.set_active_policy(&candidate_policy).is_err() {
                         return None;
                     }
-                    optimizer.find_optimal_routes_compacted(&base_str, &quote_str, &graph_canary, amount_e7_canary, &rp).ok()
-                }).await;
+                    optimizer
+                        .find_optimal_routes_compacted(
+                            &base_str,
+                            &quote_str,
+                            &graph_canary,
+                            amount_e7_canary,
+                            &rp,
+                        )
+                        .ok()
+                })
+                .await;
 
                 if let Ok(Some(candidate_diag)) = candidate_result {
                     let evaluation = stellarroute_routing::canary::CanaryEvaluator::evaluate(
@@ -228,22 +238,26 @@ pub async fn get_routes(
                         &quote_str_c,
                         amount_e7_canary,
                     );
-                    
+
                     let mut history = state_canary.canary_history.write().await;
                     if history.len() >= 1000 {
                         history.pop_front();
                     }
                     let is_violation = evaluation.is_violation;
                     history.push_back(evaluation);
-                    
+
                     if is_violation {
-                        let recent_violations = history.iter().rev()
+                        let recent_violations = history
+                            .iter()
+                            .rev()
                             .take(config.rollback_trigger_threshold as usize)
                             .filter(|e| e.is_violation)
                             .count();
-                            
+
                         if recent_violations >= config.rollback_trigger_threshold as usize {
-                            tracing::warn!("Canary trigger threshold reached! Disabling canary pipeline.");
+                            tracing::warn!(
+                                "Canary trigger threshold reached! Disabling canary pipeline."
+                            );
                             let mut cfg = state_canary.canary_config.write().await;
                             cfg.enabled = false;
                         }
@@ -312,7 +326,9 @@ pub async fn get_routes(
 
     // ── Unwrap Arc (shared by single-flight callers) ────────────────────────
     match Arc::try_unwrap(result_arc) {
-        Ok(res) => res.map(Json),
-        Err(arc) => (*arc).clone().map(Json),
+        Ok(res) => res.map(|r| Json(ApiResponse::new(r, request_id.to_string()))),
+        Err(arc) => (*arc)
+            .clone()
+            .map(|r| Json(ApiResponse::new(r, request_id.to_string()))),
     }
 }

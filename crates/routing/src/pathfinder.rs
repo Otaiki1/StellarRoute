@@ -118,12 +118,16 @@ impl Pathfinder {
             ));
         }
 
-        let from_idx = graph.asset_map.get(from).cloned().ok_or_else(|| {
-            RoutingError::NoRoute(from.to_string(), to.to_string())
-        })?;
-        let to_idx = graph.asset_map.get(to).cloned().ok_or_else(|| {
-            RoutingError::NoRoute(from.to_string(), to.to_string())
-        })?;
+        let from_idx = graph
+            .asset_map
+            .get(from)
+            .cloned()
+            .ok_or_else(|| RoutingError::NoRoute(from.to_string(), to.to_string()))?;
+        let to_idx = graph
+            .asset_map
+            .get(to)
+            .cloned()
+            .ok_or_else(|| RoutingError::NoRoute(from.to_string(), to.to_string()))?;
 
         let paths = self.bfs_paths_compacted(graph, from_idx, to_idx, amount_in, policy)?;
 
@@ -191,7 +195,11 @@ impl Pathfinder {
             }
 
             for edge in graph.get_neighbors(current_idx) {
-                let venue_type = if edge.venue_type_idx == 1 { "amm" } else { "sdex" };
+                let venue_type = if edge.venue_type_idx == 1 {
+                    "amm"
+                } else {
+                    "sdex"
+                };
                 if !policy.is_venue_allowed(venue_type) {
                     continue;
                 }

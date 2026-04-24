@@ -124,8 +124,12 @@ pub fn record_cache_miss(cache_type: &str) {
 
 /// Record adaptive timeout metrics
 pub fn record_adaptive_timeout(timeout_ms: u64, ema_ms: u64, environment: &str) {
-    ADAPTIVE_TIMEOUT_MS.with_label_values(&[environment]).set(timeout_ms as i64);
-    EMA_LATENCY_MS.with_label_values(&[environment]).set(ema_ms as i64);
+    ADAPTIVE_TIMEOUT_MS
+        .with_label_values(&[environment])
+        .set(timeout_ms as i64);
+    EMA_LATENCY_MS
+        .with_label_values(&[environment])
+        .set(ema_ms as i64);
 }
 
 /// Get cache hit ratio for a given cache type

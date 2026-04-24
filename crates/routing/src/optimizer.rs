@@ -250,9 +250,9 @@ impl HybridOptimizer {
         let policy = self.active_policy();
         let mut excluded_routes = Vec::new();
 
-        let paths = self
-            .pathfinder
-            .find_paths_compacted(from, to, graph, amount_in, routing_policy)?;
+        let paths =
+            self.pathfinder
+                .find_paths_compacted(from, to, graph, amount_in, routing_policy)?;
 
         if paths.is_empty() {
             return Err(RoutingError::NoRoute(from.to_string(), to.to_string()));
@@ -366,10 +366,14 @@ impl HybridOptimizer {
             let from_idx = *graph.asset_map.get(&hop.source_asset).ok_or_else(|| {
                 RoutingError::NoRoute(hop.source_asset.clone(), hop.destination_asset.clone())
             })?;
-            
-            let edge = graph.get_neighbors(from_idx)
+
+            let edge = graph
+                .get_neighbors(from_idx)
                 .iter()
-                .find(|e| graph.assets[e.to_idx as usize] == hop.destination_asset && e.venue_ref == hop.venue_ref)
+                .find(|e| {
+                    graph.assets[e.to_idx as usize] == hop.destination_asset
+                        && e.venue_ref == hop.venue_ref
+                })
                 .ok_or_else(|| {
                     RoutingError::NoRoute(hop.source_asset.clone(), hop.destination_asset.clone())
                 })?;
