@@ -12,6 +12,7 @@ use crate::models::{QuoteResponse, RoutesResponse};
 use crate::replay::capture::CaptureHook;
 use crate::routes::ws::WsState;
 use stellarroute_routing::canary::{CanaryConfig, CanaryEvaluation};
+use stellarroute_routing::adaptive_timeout::TimeoutController;
 use stellarroute_routing::health::circuit_breaker::CircuitBreakerRegistry;
 
 use crate::worker::{JobQueue, RouteWorkerPool, WorkerPoolConfig};
@@ -144,6 +145,8 @@ pub struct AppState {
     pub canary_config: Arc<tokio::sync::RwLock<CanaryConfig>>,
     /// Canary history buffer for operator reporting
     pub canary_history: Arc<tokio::sync::RwLock<std::collections::VecDeque<CanaryEvaluation>>>,
+    /// Dynamic timeout controller for quote discovery
+    pub timeout_controller: Arc<TimeoutController>,
 }
 
 impl AppState {
@@ -178,6 +181,7 @@ impl AppState {
             kill_switch,
             canary_config: Arc::new(tokio::sync::RwLock::new(CanaryConfig::default())),
             canary_history: Arc::new(tokio::sync::RwLock::new(std::collections::VecDeque::with_capacity(1000))),
+            timeout_controller: Arc::new(TimeoutController::new(Default::default())),
         }
     }
 
@@ -226,6 +230,7 @@ impl AppState {
             kill_switch,
             canary_config: Arc::new(tokio::sync::RwLock::new(CanaryConfig::default())),
             canary_history: Arc::new(tokio::sync::RwLock::new(std::collections::VecDeque::with_capacity(1000))),
+            timeout_controller: Arc::new(TimeoutController::new(Default::default())),
         }
     }
 
@@ -258,5 +263,28 @@ impl AppState {
     pub fn with_ws(mut self, ws: Arc<WsState>) -> Self {
         self.ws = Some(ws);
         self
+    }
+
+    /// Calculate a quantitative health score (0.0 to 1.0) based on dependency health
+    pub async fn calculate_health_score(&self) -> f64 {
+        let mut score = 1.0;
+        
+        // Check DB
+        if let Err(_) = sqlx::query("SELECT 1").execute(self.db.read_pool()).await {
+            score *= 0.5;
+        }
+
+        // Check Redis
+        if let Some(cache) = &self.cache {
+            if let Ok(mut guard) = cache.try_lock() {
+                if !guard.is_healthy().await {
+                    score *= 0.8;
+                }
+            }
+        }
+
+        // Check Horizon (simplified active probe)
+        // In a real app, this would be more sophisticated
+        score
     }
 }

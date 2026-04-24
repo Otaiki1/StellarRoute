@@ -467,16 +467,27 @@ async fn find_best_price(
     quote_id: uuid::Uuid,
     amount: f64,
 ) -> Result<FindBestPriceResult> {
-    // Parallel multi-source quote computation
-    let sdex_timeout = Duration::from_millis(500);
-    let amm_timeout = Duration::from_millis(500);
-
+    // Parallel multi-source quote computation with adaptive timeouts
+    let health_score = state.calculate_health_score().await;
+    let dynamic_timeout = state.timeout_controller.calculate_timeout(health_score);
+    
+    let start_fetch = std::time::Instant::now();
     let sdex_task = fetch_source_candidates(state, base_id, quote_id, "sdex");
     let amm_task = fetch_source_candidates(state, base_id, quote_id, "amm");
 
     let (sdex_res, amm_res) = tokio::join!(
-        timeout(sdex_timeout, sdex_task),
-        timeout(amm_timeout, amm_task)
+        timeout(dynamic_timeout, sdex_task),
+        timeout(dynamic_timeout, amm_task)
+    );
+
+    let fetch_latency = start_fetch.elapsed();
+    state.timeout_controller.record_latency(fetch_latency);
+    
+    // Record metrics
+    crate::metrics::record_adaptive_timeout(
+        dynamic_timeout.as_millis() as u64,
+        state.timeout_controller.current_ema_ms(),
+        "realtime"
     );
 
     let mut candidates = Vec::new();
@@ -484,13 +495,13 @@ async fn find_best_price(
     match sdex_res {
         Ok(Ok(mut res)) => candidates.append(&mut res),
         Ok(Err(e)) => warn!("SDEX source error: {:?}", e),
-        Err(_) => warn!("SDEX source timed out"),
+        Err(_) => warn!("SDEX source timed out after {:?}", dynamic_timeout),
     }
 
     match amm_res {
         Ok(Ok(mut res)) => candidates.append(&mut res),
         Ok(Err(e)) => warn!("AMM source error: {:?}", e),
-        Err(_) => warn!("AMM source timed out"),
+        Err(_) => warn!("AMM source timed out after {:?}", dynamic_timeout),
     }
 
     // Deterministic merge: sort by price, then venue type, then ref
