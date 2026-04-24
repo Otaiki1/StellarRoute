@@ -238,8 +238,7 @@ impl LoadTestHarness {
                         } else {
                             config.degradation.rpc_error_rate
                         };
-                        if horizon_error_rate > 0.0 && rng.gen::<f64>() < horizon_error_rate
-                        {
+                        if horizon_error_rate > 0.0 && rng.gen::<f64>() < horizon_error_rate {
                             failed_dependency = Some("horizon");
                         }
                         let soroban_error_rate = if config.degradation.soroban_error_rate > 0.0 {
