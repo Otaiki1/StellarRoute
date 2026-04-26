@@ -1,3 +1,6 @@
+import { createContext, useContext, ReactNode, useState } from 'react';
+
+interface WalletContextType {
 'use client';
 
 import * as React from 'react';
@@ -39,14 +42,14 @@ interface WalletContextValue {
   setTransactionPending: (pending: boolean) => void;
 }
 
-const WalletContext = React.createContext<WalletContextValue | undefined>(undefined);
+const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 const AUTO_RECONNECT_PREFERENCE_KEY = 'stellarroute.wallet.autoReconnect';
 const LAST_WALLET_ID_KEY = 'stellarroute.wallet.lastWalletId';
 
 interface WalletProviderProps {
-  children: React.ReactNode;
-  defaultNetwork?: WalletNetwork;
+  children: ReactNode;
+  defaultNetwork?: string;
 }
 
 export function WalletProvider({
@@ -288,13 +291,17 @@ export function WalletProvider({
     }, []),
   };
 
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
+  return (
+    <WalletContext.Provider value={value}>
+      {children}
+    </WalletContext.Provider>
+  );
 }
 
 export function useWallet() {
-  const context = React.useContext(WalletContext);
-  if (context === undefined) {
-    throw new Error('useWallet must be used within a WalletProvider');
+  const context = useContext(WalletContext);
+  if (!context) {
+    throw new Error('useWallet must be used within WalletProvider');
   }
   return context;
 }

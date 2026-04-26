@@ -65,7 +65,7 @@ export interface UseQuoteRefreshOptions {
 
 export type UseQuoteRefreshState = UseApiState<PriceQuote> & {
   /** Manual refresh; blocked during cooldown or while inputs are invalid. */
-  refresh: () => void;
+  refresh: (options?: { force?: boolean }) => void;
   /** True after a manual refresh until the cooldown elapses. */
   manualRefreshCoolingDown: boolean;
   autoRefreshEnabled: boolean;
@@ -361,11 +361,14 @@ export function useQuoteRefresh(
     return () => clearTimeout(id);
   }, [manualCooldownUntil]);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((options?: { force?: boolean }) => {
     if (!canRequest) return;
     const t = Date.now();
-    if (t < manualCooldownUntil || t < rateLimitUntilMs) return;
-    setManualCooldownUntil(t + manualRefreshCooldownMs);
+    if (t < rateLimitUntilMs) return;
+    if (!options?.force && t < manualCooldownUntil) return;
+    setManualCooldownUntil(
+      options?.force ? 0 : t + manualRefreshCooldownMs,
+    );
     setRateLimitUntilMs(0);
     setTick((n) => n + 1);
   }, [

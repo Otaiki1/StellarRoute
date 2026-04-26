@@ -239,4 +239,40 @@ describe("useQuoteRefresh retries", () => {
       );
     }
   });
+
+  it("allows forced refresh to bypass the manual cooldown", async () => {
+    vi.useFakeTimers();
+
+    const getQuoteMock = vi.mocked(stellarRouteClient.getQuote);
+    getQuoteMock
+      .mockResolvedValueOnce(buildQuote("98.0"))
+      .mockResolvedValueOnce(buildQuote("99.0"));
+
+    const { result } = renderHook(() =>
+      useQuoteRefresh("native", "USDC:G...", 100, "sell", {
+        debounceMs: 0,
+        manualRefreshCooldownMs: 5_000,
+        isOnline: true,
+      }),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
+
+    expect(result.current.data?.total).toBe("98.0");
+
+    act(() => {
+      result.current.refresh();
+      result.current.refresh({ force: true });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getQuoteMock).toHaveBeenCalledTimes(2);
+    expect(result.current.data?.total).toBe("99.0");
+  });
 });
