@@ -5,6 +5,7 @@
 pub mod audit;
 pub mod budget;
 pub mod cache;
+pub mod dependency_health;
 pub mod docs;
 pub mod error;
 pub mod exactlyonce;

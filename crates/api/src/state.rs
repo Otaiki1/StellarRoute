@@ -6,6 +6,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
 use crate::cache::{CacheManager, SingleFlight};
+use crate::dependency_health::ExternalDependencyHealth;
 
 use crate::graph::GraphManager;
 use crate::models::{PreparedQuoteResponse, RoutesResponse};
@@ -162,6 +163,8 @@ pub struct AppState {
     pub indexer_lag: Arc<IndexerLagMonitor>,
     /// Idempotency ledger for POST /api/v1/quote deduplication
     pub idempotency_ledger: Arc<DedupeLedger>,
+    /// External dependency probes and dedicated circuit breakers.
+    pub external_dependency_health: Arc<ExternalDependencyHealth>,
 }
 
 impl AppState {
@@ -187,6 +190,7 @@ impl AppState {
             ledger.clone().spawn_cleanup_task();
             ledger
         };
+        let external_dependency_health = Arc::new(ExternalDependencyHealth::from_env());
 
         Self {
             db,
@@ -213,6 +217,7 @@ impl AppState {
             audit_writer,
             indexer_lag,
             idempotency_ledger,
+            external_dependency_health,
         }
     }
 
@@ -252,6 +257,7 @@ impl AppState {
             ledger.clone().spawn_cleanup_task();
             ledger
         };
+        let external_dependency_health = Arc::new(ExternalDependencyHealth::from_env());
 
         Self {
             db,
@@ -278,6 +284,7 @@ impl AppState {
             audit_writer,
             indexer_lag,
             idempotency_ledger,
+            external_dependency_health,
         }
     }
 
